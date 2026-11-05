@@ -3,11 +3,11 @@
 ## Execution
 - **Command**: `bash scripts/verify_repo.sh`
 - **Exit code**: 0
-- **Timestamp**: 2026-11-05T00:02:42
+- **Timestamp**: 2026-11-05T00:29:44
 
 ## Automated Checks
-- **Unit tests**: PASS (37 passed, 0 failed in 0.67s)
-- **Code coverage**: 99.18% (required threshold >= 90.00%)
+- **Unit tests**: PASS (40 passed, 0 failed in 0.68s)
+- **Code coverage**: 99.22% (required threshold >= 90.00%)
   - `src/cli.py`: 98%
   - `src/model.py`: 100%
   - `src/service.py`: 100%
@@ -16,7 +16,7 @@
 - **Repository contract**: PASS (`python scripts/check_repo_contract.py`)
 
 ## Output Summary
-All 37 test cases passed cleanly, verifying exact and partial search ordering, backward compatibility, and the new email domain filtering rules in both service and CLI interfaces. Total line coverage reached 99.18%, satisfying all automated repository guardrails.
+All 40 automated tests passed cleanly. Coverage increased to 99.22%. Boundary condition tests for empty, whitespace, and lone-`@` domain filters in both service and CLI modules pass deterministically without regressions. Static analysis and repository contract guardrails report complete compliance.
 
 ## Gate Status
 - [ ] BLOCKED

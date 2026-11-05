@@ -93,4 +93,17 @@ Base commit: 801ec04
 [x] No undocumented dependency/API introduced
 [x] Ready for independent review
 
+## Fix Cycle
+- **Trigger**: Human review decisions on findings RF-01 (MUST FIX), RF-02 (SHOULD FIX), and RF-03 (SHOULD FIX).
+- **Actions Executed**:
+  1. `src/service.py`: Updated `_extract_domain` to return `None` when email lacks an `@` or domain part is empty. Updated `search_customers` to return `[]` when `domain` normalizes to an empty string (`""`, `"   "`, `"@"`), preventing false matches with malformed customer emails.
+  2. `src/cli.py`: Updated `_parse_cli_args` to reject empty domain flag values (e.g., `--domain=""`, `-d=""`, `--domain "   "`), setting `is_valid = False` to print `"No se encontraron clientes"` with exit code 0.
+  3. `tests/test_search.py`: Added `test_search_domain_empty_or_whitespace_or_only_at` and `test_extract_domain_helper` verifying boundary cases.
+  4. `tests/test_cli.py`: Added `test_cli_domain_empty_or_invalid_values` verifying all empty flag permutations.
+  5. `docs/traceability.md`: Registered new search tests in requirement traceability matrix.
+- **Verification After Fix**:
+  - 40 tests passed in 0.68s.
+  - Overall code coverage: 99.22% (`service.py` 100%, `storage.py` 100%, `model.py` 100%, `cli.py` 98%).
+  - Static compilation and contract guardrails passed cleanly.
+
 This report is NOT an approval.

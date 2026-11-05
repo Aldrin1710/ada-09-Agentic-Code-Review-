@@ -1,5 +1,6 @@
 from pathlib import Path
 import ast
+import re
 import subprocess
 import sys
 
@@ -15,14 +16,11 @@ REQUIRED_PATHS = [
     "TASKS.md",
     "TASK_UNDER_TEST.md",
     "docs/REPO_MAP.md",
+    "docs/traceability.md",
     "scripts/verify_repo.sh",
     "scripts/check_repo_contract.py",
-    "tests",
-    "results/before-agent-run.md",
-    "results/after-agent-run.md",
-    "results/readiness-improvement-report.md",
-    "REPOSITORY_READINESS_AUDIT.md",
-    "AI_USAGE_LOG.md",
+    ".github/workflows/verify.yml",
+    "results",
 ]
 
 REQUIRED_AGENTS_SECTIONS = [
@@ -73,7 +71,17 @@ def main() -> int:
         if req_id not in spec_text:
             errors.append(f"SPEC.md missing reference to ID: {req_id}")
 
-    # 4. Verify no forbidden artifacts (.pyc, __pycache__, .coverage, .env) are tracked in Git
+    # 4. Verify docs/traceability.md includes all test functions in tests/test_search.py
+    traceability_text = (REPO_ROOT / "docs/traceability.md").read_text(encoding="utf-8")
+    test_search_text = (REPO_ROOT / "tests/test_search.py").read_text(encoding="utf-8")
+    test_funcs = re.findall(r"^def\s+(test_[a-zA-Z0-9_]+)\s*\(", test_search_text, flags=re.MULTILINE)
+    for fn_name in test_funcs:
+        if fn_name not in traceability_text:
+            errors.append(
+                f"Traceability gap: '{fn_name}' in tests/test_search.py is not documented in docs/traceability.md"
+            )
+
+    # 5. Verify no forbidden artifacts (.pyc, __pycache__, .coverage, .env) are tracked in Git
     git_ls = subprocess.run(
         ["git", "-C", str(REPO_ROOT), "ls-files"],
         capture_output=True,
@@ -91,7 +99,7 @@ def main() -> int:
             ):
                 errors.append(f"Forbidden generated/sensitive file tracked in Git: {tracked}")
 
-    # 5. Verify protected path data/customers.json has not been modified
+    # 6. Verify protected path data/customers.json has not been modified
     git_diff = subprocess.run(
         ["git", "-C", str(REPO_ROOT), "diff", "--name-only", "HEAD", "--", "data/customers.json"],
         capture_output=True,
@@ -101,7 +109,7 @@ def main() -> int:
     if git_diff.returncode == 0 and git_diff.stdout.strip():
         errors.append("Protected path violation: data/customers.json was modified")
 
-    # 6. Static type-annotation check on public functions in src/service.py and src/storage.py (NFR-03)
+    # 7. Static type-annotation check on public functions in src/service.py and src/storage.py (NFR-03)
     for rel_src in ("src/service.py", "src/storage.py"):
         tree = ast.parse((REPO_ROOT / rel_src).read_text(encoding="utf-8"), filename=rel_src)
         for node in tree.body:

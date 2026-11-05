@@ -54,3 +54,65 @@ def test_cli_system_exit_passthrough(mock_search, capsys):
     code, out = run_cli_internal(capsys, "ale")
     assert code == 3
 
+def test_cli_domain_long_flag(capsys):
+    # CR-03 / AC-07: Argumento --domain filtra clientes por dominio
+    code, out = run_cli_internal(capsys, "ana", "--domain", "example.com")
+    assert "Ana Perez" in out
+    assert "Carlos Bustamante" not in out
+    assert code == 0
+
+def test_cli_domain_short_flag(capsys):
+    # CR-03: Argumento -d filtra clientes por dominio
+    code, out = run_cli_internal(capsys, "ana", "-d", "mail.com")
+    assert "Carlos Bustamante" in out
+    assert "Ana Perez" not in out
+    assert code == 0
+
+def test_cli_domain_with_at_prefix(capsys):
+    # CR-03: Argumento de dominio con prefijo '@'
+    code, out = run_cli_internal(capsys, "ana", "-d", "@example.com")
+    assert "Ana Perez" in out
+    assert "Carlos Bustamante" not in out
+    assert code == 0
+
+def test_cli_domain_case_insensitive(capsys):
+    # CR-03: Dominio insensible a mayúsculas
+    code, out = run_cli_internal(capsys, "ana", "--domain", "EXAMPLE.COM")
+    assert "Ana Perez" in out
+    assert code == 0
+
+def test_cli_domain_no_match(capsys):
+    # CR-03: Búsqueda con dominio sin coincidencias
+    code, out = run_cli_internal(capsys, "ana", "--domain", "nonexistent.com")
+    assert "No se encontraron clientes" in out
+    assert code == 0
+
+def test_cli_domain_flag_missing_value(capsys):
+    # CR-03: Flag de dominio sin valor
+    code, out = run_cli_internal(capsys, "ana", "--domain")
+    assert "No se encontraron clientes" in out
+    assert code == 0
+
+def test_cli_domain_flag_before_term(capsys):
+    # CR-03: Flag de dominio antes del término
+    code, out = run_cli_internal(capsys, "--domain", "example.com", "ana")
+    assert "Ana Perez" in out
+    assert code == 0
+
+def test_cli_domain_equals_syntax(capsys):
+    # CR-03: Sintaxis con signo igual --domain=val y -d=val
+    code1, out1 = run_cli_internal(capsys, "ana", "--domain=example.com")
+    assert "Ana Perez" in out1
+    assert code1 == 0
+
+    code2, out2 = run_cli_internal(capsys, "ana", "-d=mail.com")
+    assert "Carlos Bustamante" in out2
+    assert code2 == 0
+
+def test_cli_unexpected_extra_argument(capsys):
+    # Argumento extra inesperado es rechazado de forma segura
+    code, out = run_cli_internal(capsys, "ana", "extra_term")
+    assert "No se encontraron clientes" in out
+    assert code == 0
+
+

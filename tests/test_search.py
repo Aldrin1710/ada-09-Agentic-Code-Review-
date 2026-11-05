@@ -86,3 +86,94 @@ def test_search_deterministic_tie_breaking_by_id(mock_load):
     # Parciales ordenadas por apellido (Alpha -> 6, Lopez -> 3 luego 9)
     assert [c.id for c in results] == [4, 7, 10, 6, 3, 9]
 
+@patch('src.service.load_customers')
+def test_search_with_email_domain_filter(mock_load):
+    # CR-03 / AC-07: Filtrado por dominio de correo específico
+    mock_load.return_value = [
+        Customer(id=1, name="Carlos", last_name="Perez", email="carlos@example.com"),
+        Customer(id=2, name="Carlos", last_name="Gomez", email="carlos@other.com"),
+        Customer(id=3, name="Ana", last_name="Perez", email="ana@example.com"),
+    ]
+
+    results = search_customers("Carlos", domain="example.com")
+
+    assert len(results) == 1
+    assert results[0].id == 1
+    assert results[0].email == "carlos@example.com"
+
+@patch('src.service.load_customers')
+def test_search_domain_with_at_prefix(mock_load):
+    # CR-03 / AC-07: Dominio proporcionado con prefijo '@'
+    mock_load.return_value = [
+        Customer(id=1, name="Carlos", last_name="Perez", email="carlos@example.com"),
+        Customer(id=2, name="Carlos", last_name="Gomez", email="carlos@other.com"),
+    ]
+
+    results = search_customers("Carlos", domain="@example.com")
+
+    assert len(results) == 1
+    assert results[0].id == 1
+
+@patch('src.service.load_customers')
+def test_search_domain_case_insensitive(mock_load):
+    # CR-03 / AC-07 / FR-04: Comparación de dominio insensible a mayúsculas/minúsculas
+    mock_load.return_value = [
+        Customer(id=1, name="Carlos", last_name="Perez", email="carlos@ExAmPlE.com"),
+        Customer(id=2, name="Carlos", last_name="Gomez", email="carlos@OTHER.COM"),
+    ]
+
+    results = search_customers("Carlos", domain="EXAMPLE.COM")
+
+    assert len(results) == 1
+    assert results[0].id == 1
+
+@patch('src.service.load_customers')
+def test_search_domain_no_match(mock_load):
+    # CR-03 / AC-07: Búsqueda con término coincidente pero dominio no existente retorna lista vacía
+    mock_load.return_value = [
+        Customer(id=1, name="Carlos", last_name="Perez", email="carlos@example.com"),
+    ]
+
+    results = search_customers("Carlos", domain="nonexistent.com")
+
+    assert results == []
+
+@patch('src.service.load_customers')
+def test_search_domain_preserves_ordering(mock_load):
+    # CR-03 / FR-05 / AC-04: El filtro de dominio conserva el orden de exactas por id y parciales por apellido/id
+    mock_load.return_value = [
+        Customer(id=10, name="Alex", last_name="Zavala", email="alex10@example.com"),
+        Customer(id=2, name="Alex", last_name="Alvarez", email="alex2@example.com"),
+        Customer(id=1, name="Alex", last_name="Abe", email="alex1@other.com"),
+        Customer(id=5, name="Alexander", last_name="Beta", email="alexander5@example.com"),
+        Customer(id=4, name="Alexia", last_name="Alpha", email="alexia4@example.com"),
+    ]
+
+    results = search_customers("alex", domain="example.com")
+
+    # Coincidencias exactas con dominio example.com: id=2, id=10
+    # Coincidencias parciales con dominio example.com: id=4 (Alpha), id=5 (Beta)
+    assert [c.id for c in results] == [2, 10, 4, 5]
+
+@patch('src.service.load_customers')
+def test_search_domain_none_backward_compatible(mock_load, mock_customers):
+    # CR-03: Compatibilidad 100% hacia atrás cuando domain es None o no se pasa
+    mock_load.return_value = mock_customers
+
+    results_default = search_customers("ale")
+    results_explicit_none = search_customers("ale", domain=None)
+
+    assert results_default == results_explicit_none
+    assert len(results_default) == 4
+
+@patch('src.service.load_customers')
+def test_search_domain_email_without_at_symbol(mock_load):
+    # Cliente con email sin arroba es excluido cuando se filtra por dominio
+    mock_load.return_value = [
+        Customer(id=1, name="Carlos", last_name="Perez", email="carlos_sin_arroba"),
+    ]
+    results = search_customers("Carlos", domain="example.com")
+    assert results == []
+
+
+

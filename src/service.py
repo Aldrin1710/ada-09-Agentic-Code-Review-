@@ -1,17 +1,38 @@
 from src.model import Customer
 from src.storage import load_customers
 
-def search_customers(term: str) -> list[Customer]:
+
+def _extract_domain(email: str) -> str | None:
+    """Extrae el dominio de una dirección de correo en minúsculas, o None si no es válido."""
+    if "@" in email:
+        domain = email.rsplit("@", 1)[1].strip().lower()
+        if domain:
+            return domain
+    return None
+
+
+def search_customers(term: str, domain: str | None = None) -> list[Customer]:
     """
-    Filtra y ordena los clientes basados en un término de búsqueda.
+    Filtra y ordena los clientes basados en un término de búsqueda y un dominio de correo opcional.
     """
     customers = load_customers('data/customers.json')
     term_lower = term.lower()
 
-    exact_matches = []
-    partial_matches = []
+    target_domain: str | None = None
+    if domain is not None:
+        target_domain = domain.strip().lower().lstrip('@')
+        if not target_domain:
+            return []
+
+    exact_matches: list[Customer] = []
+    partial_matches: list[Customer] = []
 
     for customer in customers:
+        if target_domain is not None:
+            cust_domain = _extract_domain(customer.email)
+            if cust_domain is None or cust_domain != target_domain:
+                continue
+
         name_lower = customer.name.lower()
         last_name_lower = customer.last_name.lower()
         email_lower = customer.email.lower()

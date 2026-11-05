@@ -115,4 +115,40 @@ def test_cli_unexpected_extra_argument(capsys):
     assert "No se encontraron clientes" in out
     assert code == 0
 
+def test_cli_domain_empty_or_invalid_values(capsys):
+    # RF-02 / RF-03: Invocaciones CLI con --domain="", -d="", --domain "   " y -d "@"
+    # imprimen limpiamente "No se encontraron clientes" y salen con código 0
+    code1, out1 = run_cli_internal(capsys, "ana", '--domain=""')
+    assert "No se encontraron clientes" in out1
+    assert code1 == 0
+
+    code2, out2 = run_cli_internal(capsys, "ana", '-d=""')
+    assert "No se encontraron clientes" in out2
+    assert code2 == 0
+
+    code3, out3 = run_cli_internal(capsys, "ana", "--domain", "   ")
+    assert "No se encontraron clientes" in out3
+    assert code3 == 0
+
+    code4, out4 = run_cli_internal(capsys, "ana", "-d", "@")
+    assert "No se encontraron clientes" in out4
+    assert code4 == 0
+
+    code5, out5 = run_cli_internal(capsys, "ana", "--domain=")
+    assert "No se encontraron clientes" in out5
+    assert code5 == 0
+
+    code6, out6 = run_cli_internal(capsys, "ana", "-d=")
+    assert "No se encontraron clientes" in out6
+    assert code6 == 0
+
+    code7, out7 = run_cli_internal(capsys, "ana", "--domain", "")
+    assert "No se encontraron clientes" in out7
+    assert code7 == 0
+
+    code8, out8 = run_cli_internal(capsys, "ana", "-d", "")
+    assert "No se encontraron clientes" in out8
+    assert code8 == 0
+
+
 

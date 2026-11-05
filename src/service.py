@@ -2,11 +2,13 @@ from src.model import Customer
 from src.storage import load_customers
 
 
-def _extract_domain(email: str) -> str:
-    """Extrae el dominio de una dirección de correo en minúsculas."""
+def _extract_domain(email: str) -> str | None:
+    """Extrae el dominio de una dirección de correo en minúsculas, o None si no es válido."""
     if "@" in email:
-        return email.rsplit("@", 1)[1].strip().lower()
-    return ""
+        domain = email.rsplit("@", 1)[1].strip().lower()
+        if domain:
+            return domain
+    return None
 
 
 def search_customers(term: str, domain: str | None = None) -> list[Customer]:
@@ -19,6 +21,8 @@ def search_customers(term: str, domain: str | None = None) -> list[Customer]:
     target_domain: str | None = None
     if domain is not None:
         target_domain = domain.strip().lower().lstrip('@')
+        if not target_domain:
+            return []
 
     exact_matches: list[Customer] = []
     partial_matches: list[Customer] = []
@@ -26,7 +30,7 @@ def search_customers(term: str, domain: str | None = None) -> list[Customer]:
     for customer in customers:
         if target_domain is not None:
             cust_domain = _extract_domain(customer.email)
-            if cust_domain != target_domain:
+            if cust_domain is None or cust_domain != target_domain:
                 continue
 
         name_lower = customer.name.lower()

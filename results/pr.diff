@@ -1,0 +1,718 @@
+diff --git a/AI_USAGE_LOG.md b/AI_USAGE_LOG.md
+index cf8b68e..f586bf5 100644
+--- a/AI_USAGE_LOG.md
++++ b/AI_USAGE_LOG.md
+@@ -1,36 +1,8 @@
+-# AI Usage Log
+-
+-## Entry 01 - Auditoría inicial del repositorio
+-Stage: Audit BEFORE
+-Prompt/goal: Revisar el estado inicial del repositorio heredado de las actividades anteriores para calificar las ocho dimensiones de preparación antes de ejecutar al agente.
+-AI contribution: El asistente inspeccionó los archivos y el historial de Git, detectando que AGENTS.md apuntaba a un archivo REQUIREMENTS.md mal escrito en disco como REQUERIMENTS.md, que ARCHITECTURE.md mencionaba un archivo search.py inexistente y que había archivos compilados de Python y de cobertura subidos al repositorio.
+-Student decision: Validé cada uno de los hallazgos revisando los archivos del proyecto y asigné la calificación inicial de 39 sobre 100 en la tabla de auditoría, dejando documentados los tres puntos principales de fricción antes de tocar cualquier archivo.
+-Impact: Se estableció una línea base honesta y medible sobre el código original mediante el tag ada08-baseline.
+-
+-## Entry 02 - Ejecución BEFORE e identificación de conocimiento implícito
+-Stage: BEFORE Execution & Implicit Knowledge
+-Prompt/goal: Ejecutar la tarea controlada CR-02 (incluir el apellido en las coincidencias exactas y desempatar por id ascendente) en una sesión limpia usando únicamente el prompt oficial.
+-AI contribution: El agente implementó correctamente la lógica en src/service.py y agregó dos pruebas en tests/test_search.py, pero durante el proceso tuvo que explorar quince archivos para ubicarse, falló en su primer intento de edición por los saltos de línea del archivo y al correr pytest ensució tres archivos binarios que estaban rastreados en Git.
+-Student decision: Evalué el resultado de la corrida como parcial porque, aunque las pruebas pasaron, el repositorio quedó con archivos fuera de alcance modificados. A partir de esta observación documenté las cinco piezas de conocimiento implícito que el agente tuvo que adivinar.
+-Impact: Se obtuvo evidencia clara de qué cosas sabíamos nosotros por haber hecho el proyecto antes pero que no estaban explícitas para un agente nuevo.
+-
+-## Entry 03 - Rediseño de AGENTS.md y creación del mapa del repositorio
+-Stage: Context & Navigation Improvements
+-Prompt/goal: Mejorar AGENTS.md como contrato operativo y crear docs/REPO_MAP.md para evitar que el agente explore archivos innecesarios.
+-AI contribution: Propuso una estructura para AGENTS.md con orden de lectura, fuentes de verdad, comandos oficiales, reglas de cambio y condiciones de paro, además de un mapa de navegación con una guía específica para cambios en la lógica de búsqueda.
+-Student decision: Acepté la estructura propuesta asegurándome de que AGENTS.md y REPO_MAP.md no duplicaran las reglas de negocio que ya viven en REQUIREMENTS.md y SPEC.md. También decidí corregir el nombre de REQUIREMENTS.md y pasar los artefactos técnicos del agente a inglés para cumplir con la convención de la actividad.
+-Impact: La navegación del proyecto quedó centralizada y sin referencias rotas.
+-
+-## Entry 04 - Creación del script de verificación y guardrails en código
+-Stage: Executable Knowledge & Guardrails
+-Prompt/goal: Convertir las reglas más importantes del repositorio en comprobaciones automáticas dentro de scripts/verify_repo.sh y scripts/check_repo_contract.py.
+-AI contribution: Desarrolló el script en Python para verificar la existencia de los archivos obligatorios, validar que SPEC.md referencie los identificadores de requisitos, comprobar mediante el árbol sintáctico que las funciones principales tengan anotaciones de tipos y asegurar con Git que no se modifique data/customers.json ni se rastreen archivos compilados.
+-Student decision: Aprobé la implementación y pedí que el script de verificación ejecutara pytest sin generar caché ni archivos bytecode para mantener siempre limpio el directorio de trabajo, eliminando además los archivos .pyc que venían arrastrándose de entregas pasadas.
+-Impact: Reglas que antes eran simples peticiones de texto en Markdown pasaron a ser validaciones automáticas que fallan si no se cumplen.
+-
+-## Entry 05 - Ejecución AFTER y evaluación final
+-Stage: AFTER Execution & Impact Analysis
+-Prompt/goal: Restaurar el código funcional del baseline, aplicar únicamente las mejoras de preparación del repositorio y volver a ejecutar la tarea CR-02 en una sesión limpia con el mismo prompt.
+-AI contribution: En esta segunda sesión el agente leyó primero el contrato y el mapa del repositorio, fue directo a src/service.py y tests/test_search.py sin abrir archivos de otras capas, aplicó los cambios sin errores de edición y ejecutó el script de verificación obteniendo un resultado exitoso.
+-Student decision: Revisé que el árbol de trabajo de Git no tuviera archivos ajenos modificados y comparé las métricas de ambas sesiones, actualizando la auditoría final con un puntaje de 98 sobre 100. Reconocí que decisiones como cambiar la arquitectura, modificar los datos semilla de clientes o resolver ambigüedades del negocio siguen requiriendo juicio humano.
+-Impact: Se comprobó con evidencia que preparar el repositorio reduce la incertidumbre del agente, evita modificaciones accidentales y mejora la calidad de la entrega.
++# AI Usage Log — ADA-09: Agentic Code Review
++
++## Entry 01 - Definición y refinamiento del Change Request
++- **Stage**: Human Gate 0 (Preparación y delimitación del alcance)
++- **Prompt / Goal**: Analizar las opciones de cambio permitidas por la especificación de ADA-09 y definir un requerimiento acotado que afecte lógica y pruebas sin alterar la arquitectura base.
++- **AI Contribution**: El asistente examinó el repositorio previo y el documento de requisitos, verificando que no existía funcionalidad previa de filtrado por dominio de correo, y propuso formalizar el requerimiento CR-03 con compatibilidad hacia atrás en `search_customers`.
++- **Student Decision**: Aprobé la propuesta de filtrado por dominio de correo (`--domain` / argumento opcional `domain`), descartando cambios más invasivos en el modelo de datos. Autorizé formalmente el inicio de la implementación en `CHANGE_REQUEST.md`.
++- **Impact**: Se delimitó con precisión el alcance antes de tocar una sola línea de código, garantizando que el agente desarrollador trabaje bajo criterios de aceptación objetivos y medibles.
+diff --git a/CHANGE_REQUEST.md b/CHANGE_REQUEST.md
+new file mode 100644
+index 0000000..3cb8c01
+--- /dev/null
++++ b/CHANGE_REQUEST.md
+@@ -0,0 +1,31 @@
++# Change Request
++
++Change ID: CR-03
++
++## Goal
++Add optional email domain filtering to customer search in `search_customers` and the CLI interface, enabling users to narrow search results by a specific email domain (e.g., `example.com` or `@example.com`) evaluated case-insensitively, while preserving existing search semantics, input validation, and result ordering when domain filtering is not used.
++
++## Requirements Covered
++- FR-02 (Search evaluation against customer fields including email)
++- FR-03 (Substring and partial matching behavior)
++- FR-04 (Case-insensitive matching)
++- FR-05 (Deterministic result ordering by exact match then partial match, tie-broken by ID)
++- FR-07 (Bounded extension: optional email domain filter parameter in service and `--domain` option in CLI)
++- AC-07 (Acceptance criteria: when domain filter is specified, results contain only customers whose email domain matches the specified domain, case-insensitively)
++
++## Constraints
++- Follow AGENTS.md.
++- Use REQUIREMENTS.md and SPEC.md as the source of truth.
++- Preserve architecture boundaries (CLI handles parsing/formatting, Service implements filtering logic, Storage and Model contracts remain unmodified).
++- Do not weaken existing tests; ensure 100% backward compatibility for calls to `search_customers(term)` without domain.
++- Do not invent external dependencies or rewrite unrelated layers.
++
++## Verification
++- Deterministic verification via `./scripts/verify_repo.sh` passing all unit tests, contract checks, and coverage targets.
++- Targeted unit tests in `tests/test_search.py` verifying domain matching, case insensitivity, combined term + domain filtering, and empty results.
++- Targeted CLI tests in `tests/test_cli.py` verifying `--domain` flag handling and output.
++
++## Human Approval
++Approved to implement: YES
++Approved by: Aldrin (User)
++Date: 2026-11-05
+diff --git a/docs/traceability.md b/docs/traceability.md
+index a134e0f..7d50547 100644
+--- a/docs/traceability.md
++++ b/docs/traceability.md
+@@ -10,3 +10,4 @@
+ | NFR-02 | EH-02 (TS-07) | T-02 | `src/storage.py` | `test_load_customers_file_not_found`, `test_load_customers_invalid_json`, `test_load_customers_invalid_data_types` | Completed |
+ | NFR-01 | Performance (<= 150ms) | T-03 | `src/service.py` | In-memory linear scan architecture | Completed |
+ | NFR-03 | Quality (>= 90% coverage & static check) | T-05, T-06 | `src/`, `tests/` | Verified via `pytest --cov=src --cov-fail-under=90` and `scripts/check_repo_contract.py` | Completed |
++| FR-07 | AC-07 (CR-03) | CR-03 | `src/service.py`, `src/cli.py` | `test_search_with_email_domain_filter`, `test_search_domain_with_at_prefix`, `test_search_domain_case_insensitive`, `test_search_domain_no_match`, `test_search_domain_preserves_ordering`, `test_search_domain_none_backward_compatible`, `test_search_domain_email_without_at_symbol` | Completed |
+diff --git a/results/after-agent-run.md b/results/after-agent-run.md
+deleted file mode 100644
+index e3fbf78..0000000
+--- a/results/after-agent-run.md
++++ /dev/null
+@@ -1,42 +0,0 @@
+-# AFTER Agent Run
+-
+-## Run Context
+-Agent: Antigravity
+-Model: Gemini 4 Argon (Medium)
+-Tools: Lectura y escritura de archivos, ejecución de comandos en terminal
+-Permissions: Acceso local al directorio del repositorio
+-Baseline commit/tag: ada08-baseline (con mejoras de preparación del repositorio aplicadas)
+-
+-## Clarification Questions
+-No fue necesario hacer preguntas de aclaración, ya que el nombre del archivo de requerimientos fue corregido y la especificación estaba completamente alineada con la tarea solicitada.
+-
+-## Repository Exploration
+-Gracias al orden de lectura de AGENTS.md y a la guía de cambios incluida en docs/REPO_MAP.md, el agente identificó de inmediato que el cambio pertenecía exclusivamente a la capa de servicio. A diferencia de la primera ejecución, no tuvo que explorar recursivamente las carpetas ni perder tiempo leyendo el código de la interfaz de consola, el módulo de almacenamiento o el archivo de datos JSON, dirigiéndose directamente a src/service.py y tests/test_search.py.
+-
+-## Incorrect Assumptions
+-El agente no cometió suposiciones erróneas en esta sesión. Comprendió desde el inicio qué archivos debía tocar, respetó las reglas de no alterar datos protegidos y utilizó el flujo de validación oficial indicado en las instrucciones.
+-
+-## Failed / Unknown Commands
+-No se presentó ningún comando ni edición fallida. Al haber normalizado los saltos de línea del código fuente, las herramientas de edición funcionaron al primer intento, y el agente encontró de inmediato el comando de verificación dentro de AGENTS.md.
+-
+-## Out-of-Scope Changes
+-Ninguno. Al haber eliminado del control de versiones los archivos compilados y configurar la ejecución de pruebas sin generación de caché, el estado de Git al finalizar mostró únicamente los archivos propios de la tarea modificados.
+-
+-## Validation Evidence
+-Al terminar los cambios en el código y en las pruebas unitarias, el agente ejecutó el script de verificación del repositorio. Con ello se comprobaron en cadena las 21 pruebas automatizadas, la validez sintáctica de todos los módulos de Python y las reglas del contrato del proyecto, incluyendo la presencia de anotaciones de tipos y la integridad del archivo JSON de clientes.
+-
+-## Final Result
+-PASS
+-
+-## Comparación BEFORE vs AFTER
+-
+-| Indicador | BEFORE | AFTER |
+-|---|---|---|
+-| Clarification questions | Ninguna, aunque tuvo que deducir por su cuenta cuál era el archivo de requerimientos mal escrito. | Ninguna, toda la documentación estuvo clara y accesible desde el inicio. |
+-| Failed / unknown commands | Falló la primera edición de código por formato de saltos de línea y no existía un script de validación. | Ningún fallo al editar archivos ni al ejecutar el script oficial de verificación. |
+-| Incorrect assumptions | Omitió validaciones no funcionales y dejó archivos ajenos modificados al terminar. | Siguió el flujo completo sin omitir pasos ni reglas del proyecto. |
+-| Out-of-scope files modified | Tres archivos binarios de caché y cobertura quedaron modificados en el repositorio. | Cero archivos fuera de alcance modificados. |
+-| Validations executed correctly | Solo ejecutó las pruebas unitarias de forma aislada. | Ejecutó el script completo de verificación (pruebas, sintaxis y contrato del repositorio). |
+-| Final result | PARTIAL | PASS |
+-| Qualitative observation | El agente trabajó a ciegas al principio, leyendo todo el código fuente para entender dónde hacer el cambio y dejando residuos en Git. | El agente fue directo a los archivos indicados por el mapa del repositorio y validó su entrega de forma limpia y ordenada. |
+-| Discoverability | Tuvo que explorar manualmente las carpetas para encontrar los archivos y comandos de prueba. | Descubrió las rutas, reglas y comandos directamente desde AGENTS.md y docs/REPO_MAP.md. |
+diff --git a/results/before-agent-run.md b/results/before-agent-run.md
+deleted file mode 100644
+index 6962f51..0000000
+--- a/results/before-agent-run.md
++++ /dev/null
+@@ -1,31 +0,0 @@
+-# BEFORE Agent Run
+-
+-## Run Context
+-Agent: Antigravity
+-Model: Gemini 4 Argon (Medium)
+-Tools: Lectura y escritura de archivos, ejecución de comandos en terminal
+-Permissions: Acceso local al directorio del repositorio
+-Baseline commit/tag: ada08-baseline
+-
+-## Clarification Questions
+-El agente no realizó preguntas de aclaración. A pesar de que las instrucciones pedían leer REQUIREMENTS.md y ese archivo no existía bajo ese nombre, el agente buscó en la carpeta raíz, dedujo que se trataba de REQUERIMENTS.md y continuó por su cuenta.
+-
+-## Repository Exploration
+-Al no contar con un mapa del repositorio ni una guía de dónde se encontraba cada componente, el agente tuvo que listar manualmente el contenido de todas las carpetas y leer prácticamente todo el proyecto antes de empezar a programar. En total revisó quince archivos, incluyendo módulos que no tenían relación con la tarea asignada como la interfaz de línea de comandos, el cargador de almacenamiento, las pruebas de consola y el archivo JSON de clientes.
+-
+-## Incorrect Assumptions
+-El agente asumió que el archivo src/service.py tenía saltos de línea estándar de Unix, lo que provocó un error al intentar editarlo por primera vez. También dio por hecho que ejecutar únicamente pytest era suficiente para dar por terminada la tarea, omitiendo la actualización de la matriz de trazabilidad que existía en ese momento y pasando por alto la revisión de tipado estático mencionada en los requerimientos no funcionales.
+-
+-## Failed / Unknown Commands
+-Durante la modificación del código falló la herramienta de edición parcial sobre src/service.py debido a diferencias en los saltos de línea y espacios en blanco del archivo original, obligando al agente a sobrescribir el archivo completo. Además, como no existía un comando de validación general documentado en AGENTS.md, tuvo que buscar en el README cómo ejecutar las pruebas con cobertura.
+-
+-## Out-of-Scope Changes
+-Aunque el agente solo quiso modificar la lógica de búsqueda y sus pruebas unitarias, el hecho de correr pytest con cobertura modificó tres archivos binarios que estaban rastreados por error en el repositorio (el archivo de cobertura y dos archivos compilados dentro de las carpetas de caché). El agente notó estos cambios al revisar el estado de Git, pero simplemente los ignoró en su reporte final y dejó el árbol de trabajo sucio.
+-
+-## Validation Evidence
+-El agente ejecutó pytest antes de realizar cambios, confirmando las 19 pruebas iniciales. Al terminar su implementación volvió a correr pytest con cobertura sobre la carpeta src, pasando las 21 pruebas con un 97% de cobertura. No se ejecutaron validaciones de contrato ni de estilo porque el repositorio no contaba con ellas.
+-
+-## Final Result
+-PARTIAL
+-
+-Aunque la lógica programada para incluir el apellido en las coincidencias exactas y ordenar por identificador funcionó correctamente en las pruebas unitarias, el resultado se considera parcial porque quedaron archivos binarios modificados fuera del alcance de la tarea, hubo fallos iniciales al editar los archivos y no se pudo ejecutar una validación integral del repositorio.
+diff --git a/results/coder-report.md b/results/coder-report.md
+new file mode 100644
+index 0000000..082ee4e
+--- /dev/null
++++ b/results/coder-report.md
+@@ -0,0 +1,96 @@
++# Coder Agent Report
++
++## Change
++Change ID: CR-03
++Branch: ada09/cr-email-domain-filter
++Base commit: 801ec04
++
++## Requirements Covered
++- FR-02
++- FR-03
++- FR-04
++- FR-05
++- FR-07
++- AC-07
++
++## Implementation Plan
++1. **Service Layer (`src/service.py`)**:
++   - Update `search_customers(term: str, domain: str | None = None) -> list[Customer]` with an optional `domain` parameter.
++   - Implement `_extract_domain` helper to normalize domain extraction (`email.rsplit('@', 1)[1].strip().lower()` if `@` in email).
++   - Normalize target domain (`domain.strip().lower().lstrip('@')`) and filter out customers whose email domain does not match before match evaluation.
++   - Maintain 100% backward compatibility when `domain` is omitted or `None`.
++   - Preserve exact match priority (ordered by `id` ascending) and partial match ordering (ordered by `last_name` case-insensitive, tie-broken by `id` ascending).
++2. **CLI Layer (`src/cli.py`)**:
++   - Add argument parsing (`_parse_cli_args`) supporting optional `--domain <domain>`, `-d <domain>`, `--domain=<domain>`, and `-d=<domain>`.
++   - Maintain existing validation rules (`VR-01`, `VR-02`) and standardized output formatting (`EH-01`).
++   - If `--domain` or `-d` is passed without a value, safely treat the query as invalid, print `"No se encontraron clientes"`, and exit with code `0`.
++   - Pass `domain` to `search_customers` when present, or call without `domain` when absent.
++3. **Automated Testing (`tests/`)**:
++   - Add unit tests in `tests/test_search.py` covering email domain filtering, `@` prefix handling, case insensitivity, no matches, ordering preservation, backward compatibility, and malformed emails.
++   - Add unit tests in `tests/test_cli.py` covering `--domain`, `-d`, `@` prefix, uppercase domains, nonexistent domain queries, and missing value handling.
++4. **Traceability & Contract Guardrails (`docs/traceability.md`)**:
++   - Add FR-07 / AC-07 (CR-03) row to `docs/traceability.md` documenting all test functions in `tests/test_search.py` to maintain repository contract compliance.
++5. **Deterministic Verification**:
++   - Execute `scripts/verify_repo.sh` to ensure test suite passes with >=90% coverage, static compilation passes, and repository contract passes.
++
++## Files Changed
++- `src/service.py`: Added optional `domain: str | None = None` parameter and domain normalization/filtering logic.
++- `src/cli.py`: Added argument parsing for `--domain` / `-d` flags while preserving validation, error handling, and formatting.
++- `tests/test_search.py`: Added 7 test cases validating domain filtering functionality, ordering, and backward compatibility.
++- `tests/test_cli.py`: Added 9 test cases validating CLI domain flags, argument ordering, and error handling.
++- `docs/traceability.md`: Registered FR-07 / AC-07 traceability and mapped all test functions.
++- `results/coder-report.md`: Documented implementation report.
++
++## Tests Added / Updated
++- `tests/test_search.py`:
++  - `test_search_with_email_domain_filter`: Validates filtering customers by email domain.
++  - `test_search_domain_with_at_prefix`: Validates `@domain.com` syntax normalization.
++  - `test_search_domain_case_insensitive`: Validates case-insensitive domain matching.
++  - `test_search_domain_no_match`: Validates empty result when domain does not match.
++  - `test_search_domain_preserves_ordering`: Validates exact matches first by ID and partial matches by last name / ID.
++  - `test_search_domain_none_backward_compatible`: Validates default parameter backward compatibility.
++  - `test_search_domain_email_without_at_symbol`: Validates customer email without `@` is excluded safely.
++- `tests/test_cli.py`:
++  - `test_cli_domain_long_flag`: Validates `--domain` option filtering.
++  - `test_cli_domain_short_flag`: Validates `-d` option filtering.
++  - `test_cli_domain_with_at_prefix`: Validates `-d @domain` handling in CLI.
++  - `test_cli_domain_case_insensitive`: Validates case-insensitive domain handling in CLI.
++  - `test_cli_domain_no_match`: Validates standard "No se encontraron clientes" message on domain mismatch.
++  - `test_cli_domain_flag_missing_value`: Validates `--domain` without value exits cleanly.
++  - `test_cli_domain_flag_before_term`: Validates flag placed before positional search term.
++  - `test_cli_domain_equals_syntax`: Validates `--domain=value` and `-d=value` syntax.
++  - `test_cli_unexpected_extra_argument`: Validates rejection of extra positional tokens.
++
++## Commands Executed
++- `python -m pytest -v tests/`
++- `python -m pytest --cov=src --cov-report=term-missing tests/`
++- `D:/Git/bin/bash.exe scripts/verify_repo.sh`
++
++## Verification Result
++- Test execution: 37 passed in 0.72s.
++- Coverage gate: 99.18% overall coverage (required >= 90.00%).
++  - `src/service.py`: 100%
++  - `src/storage.py`: 100%
++  - `src/model.py`: 100%
++  - `src/cli.py`: 98%
++- Static compilation (`compileall`): PASS.
++- Repository contract check (`scripts/check_repo_contract.py`): PASS.
++- Script output summary: `REPO_CONTRACT: PASS`, `VERIFY_REPO: PASS`.
++
++## Assumptions
++- Domain filtering evaluates the domain portion of an email (the portion following the last `@`).
++- Providing a domain with a leading `@` (e.g. `@example.com`) is normalized to match `example.com`.
++- Matching is case-insensitive for both the domain query and customer email address.
++- When an optional `--domain` or `-d` flag is passed without a parameter value in the CLI, it is handled as invalid input printing `"No se encontraron clientes"` and exiting with code `0`.
++
++## Known Limitations
++- Domain filtering operates strictly on exact matching of the domain portion (no globbing, wildcards, or regex domain patterns).
++- `data/customers.json` remains read-only as constrained by architecture rules.
++
++## Self-Check
++[x] Scope respected
++[x] Existing tests not weakened
++[x] No undocumented dependency/API introduced
++[x] Ready for independent review
++
++This report is NOT an approval.
+diff --git a/results/implicit-knowledge.md b/results/implicit-knowledge.md
+deleted file mode 100644
+index 0a3882d..0000000
+--- a/results/implicit-knowledge.md
++++ /dev/null
+@@ -1,51 +0,0 @@
+-# Conocimiento Implícito Detectado (`Implicit Knowledge Found`)
+-
+-## IK-01
+-- **Qué era (`What`)**:
+-  El archivo fuente de verdad de requisitos se llama en realidad `REQUERIMENTS.md` (con error ortográfico) en lugar de `REQUIREMENTS.md` como lo referencian `AGENTS.md` y `TASK_UNDER_TEST.md`.
+-- **Cómo se descubrió (`How was it discovered`)**:
+-  Ejecutando `Get-ChildItem -Force` en la raíz del repositorio antes de intentar leer `REQUIREMENTS.md`.
+-- **¿Debería permanecer implícito? (`Should this remain implicit?`)**:
+-  NO
+-- **Dónde debe hacerse explícito (`Where should it become explicit?`)**:
+-  Renombrar el archivo a `REQUIREMENTS.md` y validar su existencia de forma determinista mediante `scripts/check_repo_contract.py` y `AGENTS.md`.
+-
+-## IK-02
+-- **Qué era (`What`)**:
+-  Los archivos de bytecode compilado (`src/__pycache__/*.pyc`, `tests/__pycache__/*.pyc`) y `.coverage` están rastreados por error en Git, por lo que ejecutar `pytest --cov=src` contamina `git status` con cambios binarios fuera de alcance.
+-- **Cómo se descubrió (`How was it discovered`)**:
+-  Únicamente después de ejecutar `pytest -v --cov=src tests/; git status -s` al final de la corrida BEFORE.
+-- **Riesgo (`Risk`)**:
+-  El agente modifica artefactos binarios no relacionados en cada ejecución de pruebas, violando el Definition of Done (*"No unrelated files are changed"*) y generando conflictos de fusión.
+-- **Remediación (`Remediation`)**:
+-  Eliminar `__pycache__/` y `.coverage` del índice de Git (`git rm --cached`), agregar `.gitignore`, e incluir un guardrail determinista en `scripts/check_repo_contract.py` que falle si cualquier archivo `.pyc`, `__pycache__` o `.coverage` está rastreado en Git.
+-
+-## IK-03
+-- **Qué era (`What`)**:
+-  El punto de entrada real de la CLI es `src/cli.py` (o `search.bat` en Windows), NO `search.py` como afirma `ARCHITECTURE.md` (`python search.py "termino"`), y las validaciones de entrada (`VR-01`, `VR-02`) viven en `src/cli.py` mientras que la salida por error de esquema JSON (`EH-02`) vive en `src/storage.py`.
+-- **Cómo se descubrió (`How was it discovered`)**:
+-  Leyendo los 4 archivos dentro de `src/` (`cli.py`, `service.py`, `storage.py`, `model.py`) y comparándolos contra `ARCHITECTURE.md` y `README.md`.
+-- **Riesgo (`Risk`)**:
+-  Un agente que confíe en `ARCHITECTURE.md` buscará un archivo `search.py` inexistente o colocará la lógica de validación/búsqueda en el módulo equivocado.
+-- **Remediación (`Remediation`)**:
+-  Actualizar `ARCHITECTURE.md` para reflejar los límites reales de cada módulo y crear `docs/REPO_MAP.md` con los puntos de entrada exactos, responsabilidades por capa y una Guía de Cambios paso a paso.
+-
+-## IK-04
+-- **Qué era (`What`)**:
+-  Ejecutar la medición de cobertura y verificar `NFR-03` (mínimo 90% de cobertura + verificación estática de tipos/sintaxis) requiere comandos específicos (`pytest --cov=src --cov-fail-under=90` y chequeos de contrato/compilación) que no aparecen en `AGENTS.md`.
+-- **Cómo se descubrió (`How was it discovered`)**:
+-  Cruzando manualmente la información de `README.md` (`pytest --cov=src tests/`), `REQUERIMENTS.md` (`NFR-03`) y `pytest.ini`.
+-- **¿Debería permanecer implícito? (`Should this remain implicit?`)**:
+-  NO
+-- **Dónde debe hacerse explícito (`Where should it become explicit?`)**:
+-  En `AGENTS.md` (sección `Standard Commands`), `scripts/verify_repo.sh` (y `scripts/verify_repo.ps1`), y `.github/workflows/verify.yml`.
+-
+-## IK-05
+-- **Qué era (`What`)**:
+-  `data/customers.json` es el dataset semilla utilizado por las pruebas de integración de la CLI (`test_cli_valid_term` en `tests/test_cli.py`), y no debe modificarse al agregar pruebas unitarias (las pruebas unitarias en `tests/test_search.py` deben usar mocks sobre `src.service.load_customers`).
+-- **Cómo se descubrió (`How was it discovered`)**:
+-  Inspeccionando `tests/test_search.py`, `tests/test_cli.py` y `data/customers.json`.
+-- **Riesgo (`Risk`)**:
+-  Un agente podría editar `data/customers.json` para probar casos borde, rompiendo las pruebas existentes de la CLI o alterando los datos semilla.
+-- **Remediación (`Remediation`)**:
+-  Documentar `data/customers.json` bajo `Do Not Edit Directly` en `docs/REPO_MAP.md` y `AGENTS.md`, e implementar una verificación determinista con `git diff` sobre `data/customers.json` dentro de `scripts/check_repo_contract.py`.
+diff --git a/results/readiness-improvement-report.md b/results/readiness-improvement-report.md
+deleted file mode 100644
+index 2e92fd6..0000000
+--- a/results/readiness-improvement-report.md
++++ /dev/null
+@@ -1,47 +0,0 @@
+-# Readiness Improvement Report
+-
+-## Resumen del análisis
+-En esta actividad evaluamos qué tan preparado estaba nuestro repositorio de búsqueda de clientes para ser modificado de forma segura por un agente de programación. En la primera ejecución partimos de un repositorio funcional pero con deuda documental y de configuración, donde el agente obtuvo una calificación inicial de 39 sobre 100 y un resultado parcial. Después de estructurar el contexto operativo, crear un mapa de navegación y programar validaciones automáticas, repetimos exactamente la misma tarea desde el código base original, logrando subir el puntaje a 98 sobre 100 y obteniendo una ejecución limpia y exitosa.
+-
+-## Implicit Knowledge Found
+-
+-### IK-01 Nombre incorrecto del archivo de requerimientos
+-Un desarrollador que ya trabajó en el proyecto sabía que el documento de requisitos se llamaba REQUERIMENTS.md por un error de dedo al crearlo, pero las instrucciones de AGENTS.md pedían leer REQUIREMENTS.md. El agente tuvo que listar los archivos de la carpeta raíz para descubrirlo. Esto no debía quedar implícito, por lo que se corrigió el nombre del archivo y se agregó al script de validación de contrato.
+-
+-### IK-02 Archivos compilados y de cobertura subidos a Git
+-En el repositorio original se habían subido por error los archivos compilados de Python y la base de datos de cobertura. Al correr las pruebas durante la primera ejecución, estos archivos binarios se modificaron automáticamente, ensuciando el estado de Git con cambios fuera de alcance. Se resolvió eliminándolos del seguimiento de Git y bloqueando su presencia desde el script de verificación.
+-
+-### IK-03 Punto de entrada y responsabilidades desactualizadas en la arquitectura
+-El documento de arquitectura mencionaba que el programa se ejecutaba con un archivo llamado search.py que nunca existió en el repositorio, además de describir límites entre capas que no coincidían del todo con la implementación real en src/cli.py y src/storage.py. Para evitar que el agente buscara archivos inexistentes, se corrigió ARCHITECTURE.md y se creó docs/REPO_MAP.md explicando exactamente qué hace cada archivo.
+-
+-### IK-04 Comandos de validación no documentados en las instrucciones del agente
+-Aunque los requerimientos no funcionales exigían mantener la cobertura de pruebas y usar tipado estático en el código, AGENTS.md solo decía que se corriera pytest de manera general. Esta información se hizo explícita y ejecutable integrándola dentro de AGENTS.md y en el script scripts/verify_repo.sh.
+-
+-### IK-05 Protección del archivo de datos de clientes
+-Quienes hicimos el proyecto en las actividades pasadas sabíamos que data/customers.json contiene los registros exactos con los que se prueban los casos de la terminal y que las pruebas unitarias del servicio deben simular esos datos con mocks en lugar de editar el archivo JSON. Como ese riesgo no estaba documentado, se declaró como ruta protegida en el mapa del repositorio y se programó una revisión en scripts/check_repo_contract.py que falla si el archivo sufre modificaciones.
+-
+-## Changes Made
+-
+-### Improvement I-01
+-Category: Context
+-Problem: El archivo AGENTS.md era demasiado breve, apuntaba a un nombre de archivo incorrecto y no especificaba los comandos de validación ni las condiciones en las que el agente debía detenerse.
+-Change: Se reescribió AGENTS.md definiendo el orden de lectura, las fuentes de verdad, el mapa resumido, los comandos estándar, las reglas de cambio y las condiciones de paro. También se renombró REQUIREMENTS.md y se unificó el idioma técnico en inglés.
+-Evidence: En la segunda ejecución el agente encontró todos los documentos normativos al primer intento y siguió el flujo de validación sin omitir pasos.
+-
+-### Improvement I-02
+-Category: Navigation
+-Problem: No existía una guía rápida que indicara dónde estaba cada módulo ni qué archivos modificar según el tipo de tarea, lo que obligó al agente a leer todo el código fuente en la corrida inicial.
+-Change: Se creó docs/REPO_MAP.md detallando los puntos de entrada, la ubicación de las pruebas, una guía de cambios para la lógica de búsqueda y la lista de archivos que no deben editarse.
+-Evidence: En la ejecución posterior el agente leyó el mapa y fue directo a src/service.py y tests/test_search.py sin abrir los módulos de consola ni de almacenamiento.
+-
+-### Improvement I-03
+-Category: Executable Knowledge
+-Problem: Las validaciones del proyecto estaban dispersas y dependían de que el usuario o el agente recordara qué banderas pasarle a pytest o cómo revisar la sintaxis del código.
+-Change: Se implementó scripts/verify_repo.sh como único comando encargado de correr las pruebas unitarias sin dejar archivos de caché, verificar la sintaxis de todos los scripts y ejecutar el validador de contrato.
+-Evidence: El agente ejecutó el script al finalizar su implementación y validó todo el repositorio en un solo paso.
+-
+-### Improvement I-04
+-Category: Guardrail
+-Problem: Las reglas críticas del proyecto solo existían como texto en Markdown, permitiendo que se subieran archivos compilados, se omitieran anotaciones de tipos o se alteraran archivos de datos sin que nada fallara.
+-Change: Se programó scripts/check_repo_contract.py para verificar automáticamente la existencia de los documentos obligatorios, las secciones de AGENTS.md, las referencias de requisitos en SPEC.md, el tipado en las funciones principales, la ausencia de archivos binarios en Git y la integridad de data/customers.json.
+-Evidence: El script detecta de forma determinista cualquier incumplimiento y forma parte obligatoria del cierre de tareas.
+diff --git a/results/run-context.md b/results/run-context.md
+new file mode 100644
+index 0000000..ddfb753
+--- /dev/null
++++ b/results/run-context.md
+@@ -0,0 +1,16 @@
++# Run Context — ADA-09
++
++## Environment and Baseline
++- **Repository**: `ada-09-agentic-code-review`
++- **Branch**: `ada09/cr-email-domain-filter`
++- **Base commit**: `801ec04` (`revert(cleanup): restaurar estructura y archivos de soporte del repositorio`)
++- **Date**: 2026-11-05
++- **Change Request**: CR-03 (`CHANGE_REQUEST.md`)
++- **Runtime**: Python 3.13.0 on Windows (Git Bash verification runtime: `D:/Git/bin/bash.exe`)
++- **Verification Harness**: `scripts/verify_repo.sh` / `scripts/check_repo_contract.py`
++
++## Role Separation
++- **Coder Agent**: Implements CR-03 in an isolated implementation session, produces `results/coder-report.md`, and runs the verification gate. Cannot review or approve its own changes.
++- **Verification Gate**: Deterministic test suite, contract validation, and coverage threshold execution recorded in `results/verification-report.md`.
++- **Reviewer Agent**: Independent, read-only session inspecting code diff, contracts, architecture, and tests, generating `results/review-contract.md` and `results/review-report.md`.
++- **Human Reviewer**: Final decision-maker inspecting findings and approving/rejecting merge readiness.
+diff --git a/src/cli.py b/src/cli.py
+index ad0a8f3..a2625fe 100644
+--- a/src/cli.py
++++ b/src/cli.py
+@@ -6,35 +6,70 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
+ 
+ from src.service import search_customers
+ 
++
++def _parse_cli_args(argv_list: list[str]) -> tuple[str | None, str | None, bool]:
++    """
++    Parsea los argumentos de la CLI extrayendo el término de búsqueda y el dominio opcional.
++    Retorna (term, domain, is_valid).
++    """
++    term: str | None = None
++    domain: str | None = None
++    i = 0
++    while i < len(argv_list):
++        arg = argv_list[i]
++        if arg in ("--domain", "-d"):
++            if i + 1 < len(argv_list):
++                domain = argv_list[i + 1]
++                i += 2
++            else:
++                return None, None, False
++        elif arg.startswith("--domain="):
++            domain = arg.split("=", 1)[1]
++            i += 1
++        elif arg.startswith("-d="):
++            domain = arg.split("=", 1)[1]
++            i += 1
++        else:
++            if term is None:
++                term = arg
++            else:
++                return None, None, False
++            i += 1
++    return term, domain, True
++
++
+ def main():
+-    if len(sys.argv) < 2:
++    term, domain, is_valid = _parse_cli_args(sys.argv[1:])
++
++    if not is_valid or term is None:
+         print("No se encontraron clientes")
+         sys.exit(0)
+-        
+-    term = sys.argv[1]
+-    
++
+     # Validaciones
+     # VR-01 / AC-01: El término no puede ser vacío y debe contener alfanuméricos
+     if not term or not term.strip() or not any(c.isalnum() for c in term):
+         print("No se encontraron clientes")
+         sys.exit(0)
+-        
++
+     # VR-02: El término debe contener al menos 3 caracteres
+     if len(term) < 3:
+         print("No se encontraron clientes")
+         sys.exit(0)
+-        
++
+     try:
+-        results = search_customers(term)
+-        
++        if domain is not None:
++            results = search_customers(term, domain=domain)
++        else:
++            results = search_customers(term)
++
+         # EH-01: Sin ninguna coincidencia deberá mostrar el mensaje
+         if not results:
+             print("No se encontraron clientes")
+             sys.exit(0)
+-            
++
+         for c in results:
+             print(f"[{c.id}] {c.name} {c.last_name} - {c.email}")
+-            
++
+     except SystemExit as e:
+         # Permitir que el SystemExit de storage.py fluya
+         sys.exit(e.code)
+@@ -43,5 +78,6 @@ def main():
+         print("Error: Ocurrió un error inesperado en la aplicación.")
+         sys.exit(1)
+ 
++
+ if __name__ == "__main__":
+     main()
+diff --git a/src/service.py b/src/service.py
+index 85a33d8..953d4a0 100644
+--- a/src/service.py
++++ b/src/service.py
+@@ -1,17 +1,34 @@
+ from src.model import Customer
+ from src.storage import load_customers
+ 
+-def search_customers(term: str) -> list[Customer]:
++
++def _extract_domain(email: str) -> str:
++    """Extrae el dominio de una dirección de correo en minúsculas."""
++    if "@" in email:
++        return email.rsplit("@", 1)[1].strip().lower()
++    return ""
++
++
++def search_customers(term: str, domain: str | None = None) -> list[Customer]:
+     """
+-    Filtra y ordena los clientes basados en un término de búsqueda.
++    Filtra y ordena los clientes basados en un término de búsqueda y un dominio de correo opcional.
+     """
+     customers = load_customers('data/customers.json')
+     term_lower = term.lower()
+ 
+-    exact_matches = []
+-    partial_matches = []
++    target_domain: str | None = None
++    if domain is not None:
++        target_domain = domain.strip().lower().lstrip('@')
++
++    exact_matches: list[Customer] = []
++    partial_matches: list[Customer] = []
+ 
+     for customer in customers:
++        if target_domain is not None:
++            cust_domain = _extract_domain(customer.email)
++            if cust_domain != target_domain:
++                continue
++
+         name_lower = customer.name.lower()
+         last_name_lower = customer.last_name.lower()
+         email_lower = customer.email.lower()
+diff --git a/tests/test_cli.py b/tests/test_cli.py
+index bdbe348..b62e062 100644
+--- a/tests/test_cli.py
++++ b/tests/test_cli.py
+@@ -54,3 +54,65 @@ def test_cli_system_exit_passthrough(mock_search, capsys):
+     code, out = run_cli_internal(capsys, "ale")
+     assert code == 3
+ 
++def test_cli_domain_long_flag(capsys):
++    # CR-03 / AC-07: Argumento --domain filtra clientes por dominio
++    code, out = run_cli_internal(capsys, "ana", "--domain", "example.com")
++    assert "Ana Perez" in out
++    assert "Carlos Bustamante" not in out
++    assert code == 0
++
++def test_cli_domain_short_flag(capsys):
++    # CR-03: Argumento -d filtra clientes por dominio
++    code, out = run_cli_internal(capsys, "ana", "-d", "mail.com")
++    assert "Carlos Bustamante" in out
++    assert "Ana Perez" not in out
++    assert code == 0
++
++def test_cli_domain_with_at_prefix(capsys):
++    # CR-03: Argumento de dominio con prefijo '@'
++    code, out = run_cli_internal(capsys, "ana", "-d", "@example.com")
++    assert "Ana Perez" in out
++    assert "Carlos Bustamante" not in out
++    assert code == 0
++
++def test_cli_domain_case_insensitive(capsys):
++    # CR-03: Dominio insensible a mayúsculas
++    code, out = run_cli_internal(capsys, "ana", "--domain", "EXAMPLE.COM")
++    assert "Ana Perez" in out
++    assert code == 0
++
++def test_cli_domain_no_match(capsys):
++    # CR-03: Búsqueda con dominio sin coincidencias
++    code, out = run_cli_internal(capsys, "ana", "--domain", "nonexistent.com")
++    assert "No se encontraron clientes" in out
++    assert code == 0
++
++def test_cli_domain_flag_missing_value(capsys):
++    # CR-03: Flag de dominio sin valor
++    code, out = run_cli_internal(capsys, "ana", "--domain")
++    assert "No se encontraron clientes" in out
++    assert code == 0
++
++def test_cli_domain_flag_before_term(capsys):
++    # CR-03: Flag de dominio antes del término
++    code, out = run_cli_internal(capsys, "--domain", "example.com", "ana")
++    assert "Ana Perez" in out
++    assert code == 0
++
++def test_cli_domain_equals_syntax(capsys):
++    # CR-03: Sintaxis con signo igual --domain=val y -d=val
++    code1, out1 = run_cli_internal(capsys, "ana", "--domain=example.com")
++    assert "Ana Perez" in out1
++    assert code1 == 0
++
++    code2, out2 = run_cli_internal(capsys, "ana", "-d=mail.com")
++    assert "Carlos Bustamante" in out2
++    assert code2 == 0
++
++def test_cli_unexpected_extra_argument(capsys):
++    # Argumento extra inesperado es rechazado de forma segura
++    code, out = run_cli_internal(capsys, "ana", "extra_term")
++    assert "No se encontraron clientes" in out
++    assert code == 0
++
++
+diff --git a/tests/test_search.py b/tests/test_search.py
+index 1ce5b6d..64c9080 100644
+--- a/tests/test_search.py
++++ b/tests/test_search.py
+@@ -86,3 +86,94 @@ def test_search_deterministic_tie_breaking_by_id(mock_load):
+     # Parciales ordenadas por apellido (Alpha -> 6, Lopez -> 3 luego 9)
+     assert [c.id for c in results] == [4, 7, 10, 6, 3, 9]
+ 
++@patch('src.service.load_customers')
++def test_search_with_email_domain_filter(mock_load):
++    # CR-03 / AC-07: Filtrado por dominio de correo específico
++    mock_load.return_value = [
++        Customer(id=1, name="Carlos", last_name="Perez", email="carlos@example.com"),
++        Customer(id=2, name="Carlos", last_name="Gomez", email="carlos@other.com"),
++        Customer(id=3, name="Ana", last_name="Perez", email="ana@example.com"),
++    ]
++
++    results = search_customers("Carlos", domain="example.com")
++
++    assert len(results) == 1
++    assert results[0].id == 1
++    assert results[0].email == "carlos@example.com"
++
++@patch('src.service.load_customers')
++def test_search_domain_with_at_prefix(mock_load):
++    # CR-03 / AC-07: Dominio proporcionado con prefijo '@'
++    mock_load.return_value = [
++        Customer(id=1, name="Carlos", last_name="Perez", email="carlos@example.com"),
++        Customer(id=2, name="Carlos", last_name="Gomez", email="carlos@other.com"),
++    ]
++
++    results = search_customers("Carlos", domain="@example.com")
++
++    assert len(results) == 1
++    assert results[0].id == 1
++
++@patch('src.service.load_customers')
++def test_search_domain_case_insensitive(mock_load):
++    # CR-03 / AC-07 / FR-04: Comparación de dominio insensible a mayúsculas/minúsculas
++    mock_load.return_value = [
++        Customer(id=1, name="Carlos", last_name="Perez", email="carlos@ExAmPlE.com"),
++        Customer(id=2, name="Carlos", last_name="Gomez", email="carlos@OTHER.COM"),
++    ]
++
++    results = search_customers("Carlos", domain="EXAMPLE.COM")
++
++    assert len(results) == 1
++    assert results[0].id == 1
++
++@patch('src.service.load_customers')
++def test_search_domain_no_match(mock_load):
++    # CR-03 / AC-07: Búsqueda con término coincidente pero dominio no existente retorna lista vacía
++    mock_load.return_value = [
++        Customer(id=1, name="Carlos", last_name="Perez", email="carlos@example.com"),
++    ]
++
++    results = search_customers("Carlos", domain="nonexistent.com")
++
++    assert results == []
++
++@patch('src.service.load_customers')
++def test_search_domain_preserves_ordering(mock_load):
++    # CR-03 / FR-05 / AC-04: El filtro de dominio conserva el orden de exactas por id y parciales por apellido/id
++    mock_load.return_value = [
++        Customer(id=10, name="Alex", last_name="Zavala", email="alex10@example.com"),
++        Customer(id=2, name="Alex", last_name="Alvarez", email="alex2@example.com"),
++        Customer(id=1, name="Alex", last_name="Abe", email="alex1@other.com"),
++        Customer(id=5, name="Alexander", last_name="Beta", email="alexander5@example.com"),
++        Customer(id=4, name="Alexia", last_name="Alpha", email="alexia4@example.com"),
++    ]
++
++    results = search_customers("alex", domain="example.com")
++
++    # Coincidencias exactas con dominio example.com: id=2, id=10
++    # Coincidencias parciales con dominio example.com: id=4 (Alpha), id=5 (Beta)
++    assert [c.id for c in results] == [2, 10, 4, 5]
++
++@patch('src.service.load_customers')
++def test_search_domain_none_backward_compatible(mock_load, mock_customers):
++    # CR-03: Compatibilidad 100% hacia atrás cuando domain es None o no se pasa
++    mock_load.return_value = mock_customers
++
++    results_default = search_customers("ale")
++    results_explicit_none = search_customers("ale", domain=None)
++
++    assert results_default == results_explicit_none
++    assert len(results_default) == 4
++
++@patch('src.service.load_customers')
++def test_search_domain_email_without_at_symbol(mock_load):
++    # Cliente con email sin arroba es excluido cuando se filtra por dominio
++    mock_load.return_value = [
++        Customer(id=1, name="Carlos", last_name="Perez", email="carlos_sin_arroba"),
++    ]
++    results = search_customers("Carlos", domain="example.com")
++    assert results == []
++
++
++

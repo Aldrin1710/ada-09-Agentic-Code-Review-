@@ -176,4 +176,33 @@ def test_search_domain_email_without_at_symbol(mock_load):
     assert results == []
 
 
+@patch('src.service.load_customers')
+def test_search_domain_empty_or_whitespace_or_only_at(mock_load):
+    # RF-01 / RF-03: domain="", domain="   " y domain="@" retornan [] y jamás coinciden
+    # incluso si existen clientes con correos malformados sin '@' o con correos legítimos
+    mock_load.return_value = [
+        Customer(id=1, name="Carlos", last_name="Perez", email="carlos_sin_arroba"),
+        Customer(id=2, name="Carlos", last_name="Gomez", email="carlos@"),
+        Customer(id=3, name="Carlos", last_name="Diaz", email="carlos@example.com"),
+    ]
+
+    assert search_customers("Carlos", domain="") == []
+    assert search_customers("Carlos", domain="   ") == []
+    assert search_customers("Carlos", domain="@") == []
+    assert search_customers("Carlos", domain="@@@") == []
+
+
+def test_extract_domain_helper():
+    # RF-01: _extract_domain devuelve dominio post-'@' no vacío o None
+    from src.service import _extract_domain
+    assert _extract_domain("user@example.com") == "example.com"
+    assert _extract_domain("user@sub.domain.org") == "sub.domain.org"
+    assert _extract_domain("user@EXAMPLE.COM") == "example.com"
+    assert _extract_domain("user@") is None
+    assert _extract_domain("user@   ") is None
+    assert _extract_domain("malformed_email") is None
+    assert _extract_domain("") is None
+
+
+
 

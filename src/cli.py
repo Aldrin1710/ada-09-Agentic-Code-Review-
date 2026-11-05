@@ -35,6 +35,11 @@ def _parse_cli_args(argv_list: list[str]) -> tuple[str | None, str | None, bool]
             else:
                 return None, None, False
             i += 1
+
+    if domain is not None:
+        if not domain.strip().strip("'\"").strip().lstrip('@'):
+            return None, None, False
+
     return term, domain, True
 
 
